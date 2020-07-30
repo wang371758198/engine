@@ -103,10 +103,6 @@ func FromLLB(op *pb.Op_Source, platform *pb.Platform) (Identifier, error) {
 				}
 			case pb.AttrFullRemoteURL:
 				id.Remote = v
-			case pb.AttrAuthHeaderSecret:
-				id.AuthHeaderSecret = v
-			case pb.AttrAuthTokenSecret:
-				id.AuthTokenSecret = v
 			}
 		}
 	}

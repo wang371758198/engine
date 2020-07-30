@@ -14,6 +14,7 @@ import (
 	"github.com/moby/buildkit/session/filesync"
 	"github.com/moby/buildkit/snapshot"
 	"github.com/moby/buildkit/util/progress"
+	"github.com/pkg/errors"
 	"github.com/tonistiigi/fsutil"
 	fstypes "github.com/tonistiigi/fsutil/types"
 )
@@ -33,19 +34,33 @@ func New(opt Opt) (exporter.Exporter, error) {
 }
 
 func (e *localExporter) Resolve(ctx context.Context, opt map[string]string) (exporter.ExporterInstance, error) {
-	li := &localExporterInstance{localExporter: e}
+	id := session.FromContext(ctx)
+	if id == "" {
+		return nil, errors.New("could not access local files without session")
+	}
+
+	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	caller, err := e.opt.SessionManager.Get(timeoutCtx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	li := &localExporterInstance{localExporter: e, caller: caller}
 	return li, nil
 }
 
 type localExporterInstance struct {
 	*localExporter
+	caller session.Caller
 }
 
 func (e *localExporterInstance) Name() string {
 	return "exporting to client"
 }
 
-func (e *localExporterInstance) Export(ctx context.Context, inp exporter.Source, sessionID string) (map[string]string, error) {
+func (e *localExporterInstance) Export(ctx context.Context, inp exporter.Source) (map[string]string, error) {
 	var defers []func()
 
 	defer func() {
@@ -132,15 +147,7 @@ func (e *localExporterInstance) Export(ctx context.Context, inp exporter.Source,
 		fs = d.FS
 	}
 
-	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	caller, err := e.opt.SessionManager.Get(timeoutCtx, sessionID)
-	if err != nil {
-		return nil, err
-	}
-
-	w, err := filesync.CopyFileWriter(ctx, nil, caller)
+	w, err := filesync.CopyFileWriter(ctx, nil, e.caller)
 	if err != nil {
 		return nil, err
 	}

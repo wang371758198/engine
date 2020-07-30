@@ -181,7 +181,7 @@ func ImportIndex(ctx context.Context, store content.Store, reader io.Reader, opt
 			Layers:        layers,
 		}
 
-		desc, err := writeManifest(ctx, store, manifest, manifest.MediaType)
+		desc, err := writeManifest(ctx, store, manifest, ocispec.MediaTypeImageManifest)
 		if err != nil {
 			return ocispec.Descriptor{}, errors.Wrap(err, "write docker manifest")
 		}

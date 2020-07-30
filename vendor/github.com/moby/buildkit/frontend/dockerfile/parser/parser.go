@@ -38,11 +38,6 @@ type Node struct {
 	EndLine    int             // the line in the original dockerfile where the node ends
 }
 
-// Location return the location of node in source code
-func (node *Node) Location() []Range {
-	return toRanges(node.StartLine, node.EndLine)
-}
-
 // Dump dumps the AST defined by `node` as a list of sexps.
 // Returns a string suitable for printing.
 func (node *Node) Dump() string {
@@ -84,33 +79,28 @@ func (node *Node) AddChild(child *Node, startLine, endLine int) {
 }
 
 var (
-	dispatch     map[string]func(string, *directives) (*Node, map[string]bool, error)
-	reWhitespace = regexp.MustCompile(`[\t\v\f\r ]+`)
-	reDirectives = regexp.MustCompile(`^#\s*([a-zA-Z][a-zA-Z0-9]*)\s*=\s*(.+?)\s*$`)
-	reComment    = regexp.MustCompile(`^#.*$`)
+	dispatch           map[string]func(string, *Directive) (*Node, map[string]bool, error)
+	tokenWhitespace    = regexp.MustCompile(`[\t\v\f\r ]+`)
+	tokenEscapeCommand = regexp.MustCompile(`^#[ \t]*escape[ \t]*=[ \t]*(?P<escapechar>.).*$`)
+	tokenComment       = regexp.MustCompile(`^#.*$`)
 )
 
 // DefaultEscapeToken is the default escape token
 const DefaultEscapeToken = '\\'
 
-var validDirectives = map[string]struct{}{
-	"escape": {},
-	"syntax": {},
-}
-
-// directive is the structure used during a build run to hold the state of
+// Directive is the structure used during a build run to hold the state of
 // parsing directives.
-type directives struct {
-	escapeToken           rune                // Current escape token
-	lineContinuationRegex *regexp.Regexp      // Current line continuation regex
-	done                  bool                // Whether we are done looking for directives
-	seen                  map[string]struct{} // Whether the escape directive has been seen
+type Directive struct {
+	escapeToken           rune           // Current escape token
+	lineContinuationRegex *regexp.Regexp // Current line continuation regex
+	processingComplete    bool           // Whether we are done looking for directives
+	escapeSeen            bool           // Whether the escape directive has been seen
 }
 
 // setEscapeToken sets the default token for escaping characters in a Dockerfile.
-func (d *directives) setEscapeToken(s string) error {
+func (d *Directive) setEscapeToken(s string) error {
 	if s != "`" && s != "\\" {
-		return errors.Errorf("invalid escape token '%s' does not match ` or \\", s)
+		return fmt.Errorf("invalid ESCAPE '%s'. Must be ` or \\", s)
 	}
 	d.escapeToken = rune(s[0])
 	d.lineContinuationRegex = regexp.MustCompile(`\` + s + `[ \t]*$`)
@@ -120,43 +110,33 @@ func (d *directives) setEscapeToken(s string) error {
 // possibleParserDirective looks for parser directives, eg '# escapeToken=<char>'.
 // Parser directives must precede any builder instruction or other comments,
 // and cannot be repeated.
-func (d *directives) possibleParserDirective(line string) error {
-	if d.done {
+func (d *Directive) possibleParserDirective(line string) error {
+	if d.processingComplete {
 		return nil
 	}
 
-	match := reDirectives.FindStringSubmatch(line)
-	if len(match) == 0 {
-		d.done = true
-		return nil
+	tecMatch := tokenEscapeCommand.FindStringSubmatch(strings.ToLower(line))
+	if len(tecMatch) != 0 {
+		for i, n := range tokenEscapeCommand.SubexpNames() {
+			if n == "escapechar" {
+				if d.escapeSeen {
+					return errors.New("only one escape parser directive can be used")
+				}
+				d.escapeSeen = true
+				return d.setEscapeToken(tecMatch[i])
+			}
+		}
 	}
 
-	k := strings.ToLower(match[1])
-	_, ok := validDirectives[k]
-	if !ok {
-		d.done = true
-		return nil
-	}
-
-	if _, ok := d.seen[k]; ok {
-		return errors.Errorf("only one %s parser directive can be used", k)
-	}
-	d.seen[k] = struct{}{}
-
-	if k == "escape" {
-		return d.setEscapeToken(match[2])
-	}
-
+	d.processingComplete = true
 	return nil
 }
 
-// newDefaultDirectives returns a new directives structure with the default escapeToken token
-func newDefaultDirectives() *directives {
-	d := &directives{
-		seen: map[string]struct{}{},
-	}
-	d.setEscapeToken(string(DefaultEscapeToken))
-	return d
+// NewDefaultDirective returns a new Directive with the default escapeToken token
+func NewDefaultDirective() *Directive {
+	directive := Directive{}
+	directive.setEscapeToken(string(DefaultEscapeToken))
+	return &directive
 }
 
 func init() {
@@ -166,7 +146,7 @@ func init() {
 	// reformulating the arguments according to the rules in the parser
 	// functions. Errors are propagated up by Parse() and the resulting AST can
 	// be incorporated directly into the existing AST as a next.
-	dispatch = map[string]func(string, *directives) (*Node, map[string]bool, error){
+	dispatch = map[string]func(string, *Directive) (*Node, map[string]bool, error){
 		command.Add:         parseMaybeJSONToList,
 		command.Arg:         parseNameOrNameVal,
 		command.Cmd:         parseMaybeJSON,
@@ -191,7 +171,7 @@ func init() {
 // newNodeFromLine splits the line into parts, and dispatches to a function
 // based on the command and command arguments. A Node is created from the
 // result of the dispatch.
-func newNodeFromLine(line string, d *directives) (*Node, error) {
+func newNodeFromLine(line string, directive *Directive) (*Node, error) {
 	cmd, flags, args, err := splitCommand(line)
 	if err != nil {
 		return nil, err
@@ -202,7 +182,7 @@ func newNodeFromLine(line string, d *directives) (*Node, error) {
 	if fn == nil {
 		fn = parseIgnore
 	}
-	next, attrs, err := fn(args, d)
+	next, attrs, err := fn(args, directive)
 	if err != nil {
 		return nil, err
 	}
@@ -234,7 +214,7 @@ func (r *Result) PrintWarnings(out io.Writer) {
 // Parse reads lines from a Reader, parses the lines into an AST and returns
 // the AST and escape token
 func Parse(rwc io.Reader) (*Result, error) {
-	d := newDefaultDirectives()
+	d := NewDefaultDirective()
 	currentLine := 0
 	root := &Node{StartLine: -1}
 	scanner := bufio.NewScanner(rwc)
@@ -249,7 +229,7 @@ func Parse(rwc io.Reader) (*Result, error) {
 		}
 		bytesRead, err = processLine(d, bytesRead, true)
 		if err != nil {
-			return nil, withLocation(err, currentLine, 0)
+			return nil, err
 		}
 		currentLine++
 
@@ -263,7 +243,7 @@ func Parse(rwc io.Reader) (*Result, error) {
 		for !isEndOfLine && scanner.Scan() {
 			bytesRead, err := processLine(d, scanner.Bytes(), false)
 			if err != nil {
-				return nil, withLocation(err, currentLine, 0)
+				return nil, err
 			}
 			currentLine++
 
@@ -287,7 +267,7 @@ func Parse(rwc io.Reader) (*Result, error) {
 
 		child, err := newNodeFromLine(line, d)
 		if err != nil {
-			return nil, withLocation(err, startLine, currentLine)
+			return nil, err
 		}
 		root.AddChild(child, startLine, currentLine)
 	}
@@ -297,18 +277,18 @@ func Parse(rwc io.Reader) (*Result, error) {
 	}
 
 	if root.StartLine < 0 {
-		return nil, withLocation(errors.New("file with no instructions"), currentLine, 0)
+		return nil, errors.New("file with no instructions.")
 	}
 
 	return &Result{
 		AST:         root,
 		Warnings:    warnings,
 		EscapeToken: d.escapeToken,
-	}, withLocation(handleScannerError(scanner.Err()), currentLine, 0)
+	}, handleScannerError(scanner.Err())
 }
 
 func trimComments(src []byte) []byte {
-	return reComment.ReplaceAll(src, []byte{})
+	return tokenComment.ReplaceAll(src, []byte{})
 }
 
 func trimWhitespace(src []byte) []byte {
@@ -316,7 +296,7 @@ func trimWhitespace(src []byte) []byte {
 }
 
 func isComment(line []byte) bool {
-	return reComment.Match(trimWhitespace(line))
+	return tokenComment.Match(trimWhitespace(line))
 }
 
 func isEmptyContinuationLine(line []byte) bool {
@@ -325,7 +305,7 @@ func isEmptyContinuationLine(line []byte) bool {
 
 var utf8bom = []byte{0xEF, 0xBB, 0xBF}
 
-func trimContinuationCharacter(line string, d *directives) (string, bool) {
+func trimContinuationCharacter(line string, d *Directive) (string, bool) {
 	if d.lineContinuationRegex.MatchString(line) {
 		line = d.lineContinuationRegex.ReplaceAllString(line, "")
 		return line, false
@@ -335,7 +315,7 @@ func trimContinuationCharacter(line string, d *directives) (string, bool) {
 
 // TODO: remove stripLeftWhitespace after deprecation period. It seems silly
 // to preserve whitespace on continuation lines. Why is that done?
-func processLine(d *directives, token []byte, stripLeftWhitespace bool) ([]byte, error) {
+func processLine(d *Directive, token []byte, stripLeftWhitespace bool) ([]byte, error) {
 	if stripLeftWhitespace {
 		token = trimWhitespace(token)
 	}

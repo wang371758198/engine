@@ -33,7 +33,11 @@ import (
 func ParseSignal(rawSignal string) (syscall.Signal, error) {
 	s, err := strconv.Atoi(rawSignal)
 	if err == nil {
-		return syscall.Signal(s), nil
+		signal := syscall.Signal(s)
+		if unix.SignalName(signal) != "" {
+			return signal, nil
+		}
+		return -1, fmt.Errorf("unknown signal %q", rawSignal)
 	}
 	signal := unix.SignalNum(strings.ToUpper(rawSignal))
 	if signal == 0 {

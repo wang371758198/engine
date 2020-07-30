@@ -10,7 +10,6 @@ import (
 	github_com_opencontainers_go_digest "github.com/opencontainers/go-digest"
 	io "io"
 	math "math"
-	math_bits "math/bits"
 	reflect "reflect"
 	strings "strings"
 )
@@ -24,7 +23,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
+const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 
 // Descriptor describes a blob in a content store.
 //
@@ -54,7 +53,7 @@ func (m *Descriptor) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return xxx_messageInfo_Descriptor.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
+		n, err := m.MarshalTo(b)
 		if err != nil {
 			return nil, err
 		}
@@ -109,7 +108,7 @@ var fileDescriptor_37f958df3707db9e = []byte{
 func (m *Descriptor) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
@@ -117,70 +116,58 @@ func (m *Descriptor) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *Descriptor) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *Descriptor) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
+	var i int
 	_ = i
 	var l int
 	_ = l
-	if m.XXX_unrecognized != nil {
-		i -= len(m.XXX_unrecognized)
-		copy(dAtA[i:], m.XXX_unrecognized)
-	}
-	if len(m.Annotations) > 0 {
-		for k := range m.Annotations {
-			v := m.Annotations[k]
-			baseI := i
-			i -= len(v)
-			copy(dAtA[i:], v)
-			i = encodeVarintDescriptor(dAtA, i, uint64(len(v)))
-			i--
-			dAtA[i] = 0x12
-			i -= len(k)
-			copy(dAtA[i:], k)
-			i = encodeVarintDescriptor(dAtA, i, uint64(len(k)))
-			i--
-			dAtA[i] = 0xa
-			i = encodeVarintDescriptor(dAtA, i, uint64(baseI-i))
-			i--
-			dAtA[i] = 0x2a
-		}
-	}
-	if m.Size_ != 0 {
-		i = encodeVarintDescriptor(dAtA, i, uint64(m.Size_))
-		i--
-		dAtA[i] = 0x18
+	if len(m.MediaType) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintDescriptor(dAtA, i, uint64(len(m.MediaType)))
+		i += copy(dAtA[i:], m.MediaType)
 	}
 	if len(m.Digest) > 0 {
-		i -= len(m.Digest)
-		copy(dAtA[i:], m.Digest)
-		i = encodeVarintDescriptor(dAtA, i, uint64(len(m.Digest)))
-		i--
 		dAtA[i] = 0x12
+		i++
+		i = encodeVarintDescriptor(dAtA, i, uint64(len(m.Digest)))
+		i += copy(dAtA[i:], m.Digest)
 	}
-	if len(m.MediaType) > 0 {
-		i -= len(m.MediaType)
-		copy(dAtA[i:], m.MediaType)
-		i = encodeVarintDescriptor(dAtA, i, uint64(len(m.MediaType)))
-		i--
-		dAtA[i] = 0xa
+	if m.Size_ != 0 {
+		dAtA[i] = 0x18
+		i++
+		i = encodeVarintDescriptor(dAtA, i, uint64(m.Size_))
 	}
-	return len(dAtA) - i, nil
+	if len(m.Annotations) > 0 {
+		for k, _ := range m.Annotations {
+			dAtA[i] = 0x2a
+			i++
+			v := m.Annotations[k]
+			mapSize := 1 + len(k) + sovDescriptor(uint64(len(k))) + 1 + len(v) + sovDescriptor(uint64(len(v)))
+			i = encodeVarintDescriptor(dAtA, i, uint64(mapSize))
+			dAtA[i] = 0xa
+			i++
+			i = encodeVarintDescriptor(dAtA, i, uint64(len(k)))
+			i += copy(dAtA[i:], k)
+			dAtA[i] = 0x12
+			i++
+			i = encodeVarintDescriptor(dAtA, i, uint64(len(v)))
+			i += copy(dAtA[i:], v)
+		}
+	}
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
+	return i, nil
 }
 
 func encodeVarintDescriptor(dAtA []byte, offset int, v uint64) int {
-	offset -= sovDescriptor(v)
-	base := offset
 	for v >= 1<<7 {
 		dAtA[offset] = uint8(v&0x7f | 0x80)
 		v >>= 7
 		offset++
 	}
 	dAtA[offset] = uint8(v)
-	return base
+	return offset + 1
 }
 func (m *Descriptor) Size() (n int) {
 	if m == nil {
@@ -214,7 +201,14 @@ func (m *Descriptor) Size() (n int) {
 }
 
 func sovDescriptor(x uint64) (n int) {
-	return (math_bits.Len64(x|1) + 6) / 7
+	for {
+		n++
+		x >>= 7
+		if x == 0 {
+			break
+		}
+	}
+	return n
 }
 func sozDescriptor(x uint64) (n int) {
 	return sovDescriptor(uint64((x << 1) ^ uint64((int64(x) >> 63))))
@@ -518,7 +512,6 @@ func (m *Descriptor) Unmarshal(dAtA []byte) error {
 func skipDescriptor(dAtA []byte) (n int, err error) {
 	l := len(dAtA)
 	iNdEx := 0
-	depth := 0
 	for iNdEx < l {
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
@@ -550,8 +543,10 @@ func skipDescriptor(dAtA []byte) (n int, err error) {
 					break
 				}
 			}
+			return iNdEx, nil
 		case 1:
 			iNdEx += 8
+			return iNdEx, nil
 		case 2:
 			var length int
 			for shift := uint(0); ; shift += 7 {
@@ -572,30 +567,55 @@ func skipDescriptor(dAtA []byte) (n int, err error) {
 				return 0, ErrInvalidLengthDescriptor
 			}
 			iNdEx += length
-		case 3:
-			depth++
-		case 4:
-			if depth == 0 {
-				return 0, ErrUnexpectedEndOfGroupDescriptor
+			if iNdEx < 0 {
+				return 0, ErrInvalidLengthDescriptor
 			}
-			depth--
+			return iNdEx, nil
+		case 3:
+			for {
+				var innerWire uint64
+				var start int = iNdEx
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return 0, ErrIntOverflowDescriptor
+					}
+					if iNdEx >= l {
+						return 0, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					innerWire |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				innerWireType := int(innerWire & 0x7)
+				if innerWireType == 4 {
+					break
+				}
+				next, err := skipDescriptor(dAtA[start:])
+				if err != nil {
+					return 0, err
+				}
+				iNdEx = start + next
+				if iNdEx < 0 {
+					return 0, ErrInvalidLengthDescriptor
+				}
+			}
+			return iNdEx, nil
+		case 4:
+			return iNdEx, nil
 		case 5:
 			iNdEx += 4
+			return iNdEx, nil
 		default:
 			return 0, fmt.Errorf("proto: illegal wireType %d", wireType)
 		}
-		if iNdEx < 0 {
-			return 0, ErrInvalidLengthDescriptor
-		}
-		if depth == 0 {
-			return iNdEx, nil
-		}
 	}
-	return 0, io.ErrUnexpectedEOF
+	panic("unreachable")
 }
 
 var (
-	ErrInvalidLengthDescriptor        = fmt.Errorf("proto: negative length found during unmarshaling")
-	ErrIntOverflowDescriptor          = fmt.Errorf("proto: integer overflow")
-	ErrUnexpectedEndOfGroupDescriptor = fmt.Errorf("proto: unexpected end of group")
+	ErrInvalidLengthDescriptor = fmt.Errorf("proto: negative length found during unmarshaling")
+	ErrIntOverflowDescriptor   = fmt.Errorf("proto: integer overflow")
 )

@@ -9,7 +9,6 @@ import (
 	github_com_gogo_protobuf_sortkeys "github.com/gogo/protobuf/sortkeys"
 	io "io"
 	math "math"
-	math_bits "math/bits"
 	reflect "reflect"
 	strings "strings"
 )
@@ -23,7 +22,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
+const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 
 type NamespaceCreate struct {
 	Name                 string            `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -46,7 +45,7 @@ func (m *NamespaceCreate) XXX_Marshal(b []byte, deterministic bool) ([]byte, err
 		return xxx_messageInfo_NamespaceCreate.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
+		n, err := m.MarshalTo(b)
 		if err != nil {
 			return nil, err
 		}
@@ -86,7 +85,7 @@ func (m *NamespaceUpdate) XXX_Marshal(b []byte, deterministic bool) ([]byte, err
 		return xxx_messageInfo_NamespaceUpdate.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
+		n, err := m.MarshalTo(b)
 		if err != nil {
 			return nil, err
 		}
@@ -125,7 +124,7 @@ func (m *NamespaceDelete) XXX_Marshal(b []byte, deterministic bool) ([]byte, err
 		return xxx_messageInfo_NamespaceDelete.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
+		n, err := m.MarshalTo(b)
 		if err != nil {
 			return nil, err
 		}
@@ -239,7 +238,7 @@ func (m *NamespaceDelete) Field(fieldpath []string) (string, bool) {
 func (m *NamespaceCreate) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
@@ -247,52 +246,43 @@ func (m *NamespaceCreate) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *NamespaceCreate) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *NamespaceCreate) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
+	var i int
 	_ = i
 	var l int
 	_ = l
-	if m.XXX_unrecognized != nil {
-		i -= len(m.XXX_unrecognized)
-		copy(dAtA[i:], m.XXX_unrecognized)
+	if len(m.Name) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintNamespace(dAtA, i, uint64(len(m.Name)))
+		i += copy(dAtA[i:], m.Name)
 	}
 	if len(m.Labels) > 0 {
-		for k := range m.Labels {
+		for k, _ := range m.Labels {
+			dAtA[i] = 0x12
+			i++
 			v := m.Labels[k]
-			baseI := i
-			i -= len(v)
-			copy(dAtA[i:], v)
-			i = encodeVarintNamespace(dAtA, i, uint64(len(v)))
-			i--
-			dAtA[i] = 0x12
-			i -= len(k)
-			copy(dAtA[i:], k)
-			i = encodeVarintNamespace(dAtA, i, uint64(len(k)))
-			i--
+			mapSize := 1 + len(k) + sovNamespace(uint64(len(k))) + 1 + len(v) + sovNamespace(uint64(len(v)))
+			i = encodeVarintNamespace(dAtA, i, uint64(mapSize))
 			dAtA[i] = 0xa
-			i = encodeVarintNamespace(dAtA, i, uint64(baseI-i))
-			i--
+			i++
+			i = encodeVarintNamespace(dAtA, i, uint64(len(k)))
+			i += copy(dAtA[i:], k)
 			dAtA[i] = 0x12
+			i++
+			i = encodeVarintNamespace(dAtA, i, uint64(len(v)))
+			i += copy(dAtA[i:], v)
 		}
 	}
-	if len(m.Name) > 0 {
-		i -= len(m.Name)
-		copy(dAtA[i:], m.Name)
-		i = encodeVarintNamespace(dAtA, i, uint64(len(m.Name)))
-		i--
-		dAtA[i] = 0xa
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
-	return len(dAtA) - i, nil
+	return i, nil
 }
 
 func (m *NamespaceUpdate) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
@@ -300,52 +290,43 @@ func (m *NamespaceUpdate) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *NamespaceUpdate) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *NamespaceUpdate) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
+	var i int
 	_ = i
 	var l int
 	_ = l
-	if m.XXX_unrecognized != nil {
-		i -= len(m.XXX_unrecognized)
-		copy(dAtA[i:], m.XXX_unrecognized)
+	if len(m.Name) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintNamespace(dAtA, i, uint64(len(m.Name)))
+		i += copy(dAtA[i:], m.Name)
 	}
 	if len(m.Labels) > 0 {
-		for k := range m.Labels {
+		for k, _ := range m.Labels {
+			dAtA[i] = 0x12
+			i++
 			v := m.Labels[k]
-			baseI := i
-			i -= len(v)
-			copy(dAtA[i:], v)
-			i = encodeVarintNamespace(dAtA, i, uint64(len(v)))
-			i--
-			dAtA[i] = 0x12
-			i -= len(k)
-			copy(dAtA[i:], k)
-			i = encodeVarintNamespace(dAtA, i, uint64(len(k)))
-			i--
+			mapSize := 1 + len(k) + sovNamespace(uint64(len(k))) + 1 + len(v) + sovNamespace(uint64(len(v)))
+			i = encodeVarintNamespace(dAtA, i, uint64(mapSize))
 			dAtA[i] = 0xa
-			i = encodeVarintNamespace(dAtA, i, uint64(baseI-i))
-			i--
+			i++
+			i = encodeVarintNamespace(dAtA, i, uint64(len(k)))
+			i += copy(dAtA[i:], k)
 			dAtA[i] = 0x12
+			i++
+			i = encodeVarintNamespace(dAtA, i, uint64(len(v)))
+			i += copy(dAtA[i:], v)
 		}
 	}
-	if len(m.Name) > 0 {
-		i -= len(m.Name)
-		copy(dAtA[i:], m.Name)
-		i = encodeVarintNamespace(dAtA, i, uint64(len(m.Name)))
-		i--
-		dAtA[i] = 0xa
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
 	}
-	return len(dAtA) - i, nil
+	return i, nil
 }
 
 func (m *NamespaceDelete) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
@@ -353,39 +334,30 @@ func (m *NamespaceDelete) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *NamespaceDelete) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *NamespaceDelete) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
+	var i int
 	_ = i
 	var l int
 	_ = l
-	if m.XXX_unrecognized != nil {
-		i -= len(m.XXX_unrecognized)
-		copy(dAtA[i:], m.XXX_unrecognized)
-	}
 	if len(m.Name) > 0 {
-		i -= len(m.Name)
-		copy(dAtA[i:], m.Name)
-		i = encodeVarintNamespace(dAtA, i, uint64(len(m.Name)))
-		i--
 		dAtA[i] = 0xa
+		i++
+		i = encodeVarintNamespace(dAtA, i, uint64(len(m.Name)))
+		i += copy(dAtA[i:], m.Name)
 	}
-	return len(dAtA) - i, nil
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
+	return i, nil
 }
 
 func encodeVarintNamespace(dAtA []byte, offset int, v uint64) int {
-	offset -= sovNamespace(v)
-	base := offset
 	for v >= 1<<7 {
 		dAtA[offset] = uint8(v&0x7f | 0x80)
 		v >>= 7
 		offset++
 	}
 	dAtA[offset] = uint8(v)
-	return base
+	return offset + 1
 }
 func (m *NamespaceCreate) Size() (n int) {
 	if m == nil {
@@ -452,7 +424,14 @@ func (m *NamespaceDelete) Size() (n int) {
 }
 
 func sovNamespace(x uint64) (n int) {
-	return (math_bits.Len64(x|1) + 6) / 7
+	for {
+		n++
+		x >>= 7
+		if x == 0 {
+			break
+		}
+	}
+	return n
 }
 func sozNamespace(x uint64) (n int) {
 	return sovNamespace(uint64((x << 1) ^ uint64((int64(x) >> 63))))
@@ -1035,7 +1014,6 @@ func (m *NamespaceDelete) Unmarshal(dAtA []byte) error {
 func skipNamespace(dAtA []byte) (n int, err error) {
 	l := len(dAtA)
 	iNdEx := 0
-	depth := 0
 	for iNdEx < l {
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
@@ -1067,8 +1045,10 @@ func skipNamespace(dAtA []byte) (n int, err error) {
 					break
 				}
 			}
+			return iNdEx, nil
 		case 1:
 			iNdEx += 8
+			return iNdEx, nil
 		case 2:
 			var length int
 			for shift := uint(0); ; shift += 7 {
@@ -1089,30 +1069,55 @@ func skipNamespace(dAtA []byte) (n int, err error) {
 				return 0, ErrInvalidLengthNamespace
 			}
 			iNdEx += length
-		case 3:
-			depth++
-		case 4:
-			if depth == 0 {
-				return 0, ErrUnexpectedEndOfGroupNamespace
+			if iNdEx < 0 {
+				return 0, ErrInvalidLengthNamespace
 			}
-			depth--
+			return iNdEx, nil
+		case 3:
+			for {
+				var innerWire uint64
+				var start int = iNdEx
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return 0, ErrIntOverflowNamespace
+					}
+					if iNdEx >= l {
+						return 0, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					innerWire |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				innerWireType := int(innerWire & 0x7)
+				if innerWireType == 4 {
+					break
+				}
+				next, err := skipNamespace(dAtA[start:])
+				if err != nil {
+					return 0, err
+				}
+				iNdEx = start + next
+				if iNdEx < 0 {
+					return 0, ErrInvalidLengthNamespace
+				}
+			}
+			return iNdEx, nil
+		case 4:
+			return iNdEx, nil
 		case 5:
 			iNdEx += 4
+			return iNdEx, nil
 		default:
 			return 0, fmt.Errorf("proto: illegal wireType %d", wireType)
 		}
-		if iNdEx < 0 {
-			return 0, ErrInvalidLengthNamespace
-		}
-		if depth == 0 {
-			return iNdEx, nil
-		}
 	}
-	return 0, io.ErrUnexpectedEOF
+	panic("unreachable")
 }
 
 var (
-	ErrInvalidLengthNamespace        = fmt.Errorf("proto: negative length found during unmarshaling")
-	ErrIntOverflowNamespace          = fmt.Errorf("proto: integer overflow")
-	ErrUnexpectedEndOfGroupNamespace = fmt.Errorf("proto: unexpected end of group")
+	ErrInvalidLengthNamespace = fmt.Errorf("proto: negative length found during unmarshaling")
+	ErrIntOverflowNamespace   = fmt.Errorf("proto: integer overflow")
 )

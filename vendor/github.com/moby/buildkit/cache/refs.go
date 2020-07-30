@@ -17,7 +17,7 @@ import (
 	"github.com/moby/buildkit/snapshot"
 	"github.com/moby/buildkit/util/flightcontrol"
 	"github.com/moby/buildkit/util/leaseutil"
-	digest "github.com/opencontainers/go-digest"
+	"github.com/opencontainers/go-digest"
 	imagespecidentity "github.com/opencontainers/image-spec/identity"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
@@ -160,7 +160,7 @@ func (cr *cacheRecord) Size(ctx context.Context) (int64, error) {
 				if isDead {
 					return int64(0), nil
 				}
-				if !errors.Is(err, errdefs.ErrNotFound) {
+				if !errdefs.IsNotFound(err) {
 					return s, errors.Wrapf(err, "failed to get usage for %s", cr.ID())
 				}
 			}
@@ -352,7 +352,7 @@ func (sr *immutableRef) Extract(ctx context.Context) error {
 			return nil, err
 		}
 		if err := sr.cm.Snapshotter.Commit(ctx, getSnapshotID(sr.md), key); err != nil {
-			if !errors.Is(err, errdefs.ErrAlreadyExists) {
+			if !errdefs.IsAlreadyExists(err) {
 				return nil, err
 			}
 		}
@@ -509,7 +509,7 @@ func (cr *cacheRecord) finalize(ctx context.Context, commit bool) error {
 		return nil
 	})
 	if err != nil {
-		if !errors.Is(err, errdefs.ErrAlreadyExists) { // migrator adds leases for everything
+		if !errdefs.IsAlreadyExists(err) { // migrator adds leases for everything
 			return errors.Wrap(err, "failed to create lease")
 		}
 	}

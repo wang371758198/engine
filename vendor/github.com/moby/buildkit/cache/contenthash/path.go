@@ -1,10 +1,9 @@
 package contenthash
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
-
-	"github.com/pkg/errors"
 )
 
 var (
@@ -53,7 +52,7 @@ func walkLink(root, path string, linksWalked *int, cb onSymlinkFunc) (newpath st
 	fi, err := os.Lstat(realPath)
 	if err != nil {
 		// If path does not yet exist, treat as non-symlink
-		if errors.Is(err, os.ErrNotExist) {
+		if os.IsNotExist(err) {
 			return path, false, nil
 		}
 		return "", false, err

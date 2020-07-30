@@ -199,6 +199,25 @@ func (d *DigitallySigned) UnmarshalJSON(b []byte) error {
 	return d.FromBase64String(content)
 }
 
+// RawLogEntry represents the (TLS-parsed) contents of an entry in a CT log.
+type RawLogEntry struct {
+	// Index is a position of the entry in the log.
+	Index int64
+	// Leaf is a parsed Merkle leaf hash input.
+	Leaf MerkleTreeLeaf
+	// Cert is:
+	// - A certificate if Leaf.TimestampedEntry.EntryType is X509LogEntryType.
+	// - A precertificate if Leaf.TimestampedEntry.EntryType is
+	//   PrecertLogEntryType, in the form of a DER-encoded Certificate as
+	//   originally added (which includes the poison extension and a signature
+	//   generated over the pre-cert by the pre-cert issuer).
+	// - Empty otherwise.
+	Cert ASN1Cert
+	// Chain is the issuing certificate chain starting with the issuer of Cert,
+	// or an empty slice if Cert is empty.
+	Chain []ASN1Cert
+}
+
 // LogEntry represents the (parsed) contents of an entry in a CT log.  This is described
 // in section 3.1, but note that this structure does *not* match the TLS structure
 // defined there (the TLS structure is never used directly in RFC6962).
@@ -277,6 +296,23 @@ type SignedTreeHead struct {
 	SHA256RootHash    SHA256Hash      `json:"sha256_root_hash"`    // The root hash of the log's Merkle tree
 	TreeHeadSignature DigitallySigned `json:"tree_head_signature"` // Log's signature over a TLS-encoded TreeHeadSignature
 	LogID             SHA256Hash      `json:"log_id"`              // The SHA256 hash of the log's public key
+}
+
+func (s SignedTreeHead) String() string {
+	sigStr, err := s.TreeHeadSignature.Base64String()
+	if err != nil {
+		sigStr = tls.DigitallySigned(s.TreeHeadSignature).String()
+	}
+
+	// If the LogID field in the SignedTreeHead is empty, don't include it in
+	// the string.
+	var logIDStr string
+	if id, empty := s.LogID, (SHA256Hash{}); id != empty {
+		logIDStr = fmt.Sprintf("LogID:%s, ", id.Base64String())
+	}
+
+	return fmt.Sprintf("{%sTreeSize:%d, Timestamp:%d, SHA256RootHash:%q, TreeHeadSignature:%q}",
+		logIDStr, s.TreeSize, s.Timestamp, s.SHA256RootHash.Base64String(), sigStr)
 }
 
 // TreeHeadSignature holds the data over which the signature in an STH is
@@ -433,7 +469,7 @@ type AddJSONRequest struct {
 	Data interface{} `json:"data"`
 }
 
-// GetSTHResponse respresents the JSON response to the get-sth GET method from section 4.3.
+// GetSTHResponse represents the JSON response to the get-sth GET method from section 4.3.
 type GetSTHResponse struct {
 	TreeSize          uint64 `json:"tree_size"`           // Number of certs in the current tree
 	Timestamp         uint64 `json:"timestamp"`           // Time that the tree was created

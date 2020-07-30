@@ -1,6 +1,7 @@
 package resolver
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"io/ioutil"
@@ -10,7 +11,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/containerd/containerd/remotes"
@@ -50,7 +50,7 @@ func fillInsecureOpts(host string, c config.RegistryConfig, h *docker.RegistryHo
 func loadTLSConfig(c config.RegistryConfig) (*tls.Config, error) {
 	for _, d := range c.TLSConfigDir {
 		fs, err := ioutil.ReadDir(d)
-		if err != nil && !errors.Is(err, os.ErrNotExist) && !errors.Is(err, os.ErrPermission) {
+		if err != nil && !os.IsNotExist(err) && !os.IsPermission(err) {
 			return nil, errors.WithStack(err)
 		}
 		for _, f := range fs {
@@ -149,68 +149,16 @@ func NewRegistryConfig(m map[string]config.RegistryConfig) docker.RegistryHosts 
 	)
 }
 
-type SessionAuthenticator struct {
-	sm      *session.Manager
-	groups  []session.Group
-	mu      sync.RWMutex
-	cache   map[string]credentials
-	cacheMu sync.RWMutex
-}
-
-type credentials struct {
-	user    string
-	secret  string
-	created time.Time
-}
-
-func NewSessionAuthenticator(sm *session.Manager, g session.Group) *SessionAuthenticator {
-	return &SessionAuthenticator{sm: sm, groups: []session.Group{g}, cache: map[string]credentials{}}
-}
-
-func (a *SessionAuthenticator) credentials(h string) (string, string, error) {
-	const credentialsTimeout = time.Minute
-
-	a.cacheMu.RLock()
-	c, ok := a.cache[h]
-	if ok && time.Since(c.created) < credentialsTimeout {
-		a.cacheMu.RUnlock()
-		return c.user, c.secret, nil
-	}
-	a.cacheMu.RUnlock()
-
-	a.mu.RLock()
-	defer a.mu.RUnlock()
-
-	var err error
-	for i := len(a.groups) - 1; i >= 0; i-- {
-		var user, secret string
-		user, secret, err = auth.CredentialsFunc(a.sm, a.groups[i])(h)
-		if err != nil {
-			continue
-		}
-		a.cacheMu.Lock()
-		a.cache[h] = credentials{user: user, secret: secret, created: time.Now()}
-		a.cacheMu.Unlock()
-		return user, secret, nil
-	}
-	return "", "", err
-}
-
-func (a *SessionAuthenticator) AddSession(g session.Group) {
-	a.mu.Lock()
-	a.groups = append(a.groups, g)
-	a.mu.Unlock()
-}
-
-func New(hosts docker.RegistryHosts, auth *SessionAuthenticator) remotes.Resolver {
+func New(ctx context.Context, hosts docker.RegistryHosts, sm *session.Manager) remotes.Resolver {
 	return docker.NewResolver(docker.ResolverOptions{
-		Hosts: hostsWithCredentials(hosts, auth),
+		Hosts: hostsWithCredentials(ctx, hosts, sm),
 	})
 }
 
-func hostsWithCredentials(hosts docker.RegistryHosts, auth *SessionAuthenticator) docker.RegistryHosts {
-	if hosts == nil {
-		return nil
+func hostsWithCredentials(ctx context.Context, hosts docker.RegistryHosts, sm *session.Manager) docker.RegistryHosts {
+	id := session.FromContext(ctx)
+	if id == "" {
+		return hosts
 	}
 	return func(domain string) ([]docker.RegistryHost, error) {
 		res, err := hosts(domain)
@@ -221,9 +169,17 @@ func hostsWithCredentials(hosts docker.RegistryHosts, auth *SessionAuthenticator
 			return nil, nil
 		}
 
+		timeoutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		caller, err := sm.Get(timeoutCtx, id)
+		if err != nil {
+			return nil, err
+		}
+
 		a := docker.NewDockerAuthorizer(
 			docker.WithAuthClient(res[0].Client),
-			docker.WithAuthCreds(auth.credentials),
+			docker.WithAuthCreds(auth.CredentialsFunc(context.TODO(), caller)),
 		)
 		for i := range res {
 			res[i].Authorizer = a

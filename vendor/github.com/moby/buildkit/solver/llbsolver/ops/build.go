@@ -8,7 +8,6 @@ import (
 	"github.com/containerd/continuity/fs"
 	"github.com/moby/buildkit/client/llb"
 	"github.com/moby/buildkit/frontend"
-	"github.com/moby/buildkit/session"
 	"github.com/moby/buildkit/snapshot"
 	"github.com/moby/buildkit/solver"
 	"github.com/moby/buildkit/solver/llbsolver"
@@ -37,7 +36,7 @@ func NewBuildOp(v solver.Vertex, op *pb.Op_Build, b frontend.FrontendLLBBridge, 
 	}, nil
 }
 
-func (b *buildOp) CacheMap(ctx context.Context, g session.Group, index int) (*solver.CacheMap, bool, error) {
+func (b *buildOp) CacheMap(ctx context.Context, index int) (*solver.CacheMap, bool, error) {
 	dt, err := json.Marshal(struct {
 		Type string
 		Exec *pb.BuildOp
@@ -58,7 +57,7 @@ func (b *buildOp) CacheMap(ctx context.Context, g session.Group, index int) (*so
 	}, true, nil
 }
 
-func (b *buildOp) Exec(ctx context.Context, g session.Group, inputs []solver.Result) (outputs []solver.Result, retErr error) {
+func (b *buildOp) Exec(ctx context.Context, inputs []solver.Result) (outputs []solver.Result, retErr error) {
 	if b.op.Builder != pb.LLBBuilder {
 		return nil, errors.Errorf("only LLB builder is currently allowed")
 	}
@@ -124,7 +123,7 @@ func (b *buildOp) Exec(ctx context.Context, g session.Group, inputs []solver.Res
 
 	newRes, err := b.b.Solve(ctx, frontend.SolveRequest{
 		Definition: def.ToPB(),
-	}, g.SessionIterator().NextSession())
+	})
 	if err != nil {
 		return nil, err
 	}

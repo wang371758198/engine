@@ -12,11 +12,8 @@ import (
 	github_com_gogo_protobuf_sortkeys "github.com/gogo/protobuf/sortkeys"
 	types1 "github.com/gogo/protobuf/types"
 	grpc "google.golang.org/grpc"
-	codes "google.golang.org/grpc/codes"
-	status "google.golang.org/grpc/status"
 	io "io"
 	math "math"
-	math_bits "math/bits"
 	reflect "reflect"
 	strings "strings"
 )
@@ -30,7 +27,7 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
+const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 
 type Plugin struct {
 	// Type defines the type of plugin.
@@ -88,7 +85,7 @@ func (m *Plugin) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return xxx_messageInfo_Plugin.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
+		n, err := m.MarshalTo(b)
 		if err != nil {
 			return nil, err
 		}
@@ -137,7 +134,7 @@ func (m *PluginsRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, erro
 		return xxx_messageInfo_PluginsRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
+		n, err := m.MarshalTo(b)
 		if err != nil {
 			return nil, err
 		}
@@ -176,7 +173,7 @@ func (m *PluginsResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, err
 		return xxx_messageInfo_PluginsResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
+		n, err := m.MarshalTo(b)
 		if err != nil {
 			return nil, err
 		}
@@ -215,7 +212,7 @@ func (m *ServerResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, erro
 		return xxx_messageInfo_ServerResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
+		n, err := m.MarshalTo(b)
 		if err != nil {
 			return nil, err
 		}
@@ -343,17 +340,6 @@ type IntrospectionServer interface {
 	Server(context.Context, *types1.Empty) (*ServerResponse, error)
 }
 
-// UnimplementedIntrospectionServer can be embedded to have forward compatible implementations.
-type UnimplementedIntrospectionServer struct {
-}
-
-func (*UnimplementedIntrospectionServer) Plugins(ctx context.Context, req *PluginsRequest) (*PluginsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Plugins not implemented")
-}
-func (*UnimplementedIntrospectionServer) Server(ctx context.Context, req *types1.Empty) (*ServerResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Server not implemented")
-}
-
 func RegisterIntrospectionServer(s *grpc.Server, srv IntrospectionServer) {
 	s.RegisterService(&_Introspection_serviceDesc, srv)
 }
@@ -414,7 +400,7 @@ var _Introspection_serviceDesc = grpc.ServiceDesc{
 func (m *Plugin) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
@@ -422,103 +408,101 @@ func (m *Plugin) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *Plugin) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *Plugin) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
+	var i int
 	_ = i
 	var l int
 	_ = l
-	if m.XXX_unrecognized != nil {
-		i -= len(m.XXX_unrecognized)
-		copy(dAtA[i:], m.XXX_unrecognized)
+	if len(m.Type) > 0 {
+		dAtA[i] = 0xa
+		i++
+		i = encodeVarintIntrospection(dAtA, i, uint64(len(m.Type)))
+		i += copy(dAtA[i:], m.Type)
 	}
-	if m.InitErr != nil {
-		{
-			size, err := m.InitErr.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
+	if len(m.ID) > 0 {
+		dAtA[i] = 0x12
+		i++
+		i = encodeVarintIntrospection(dAtA, i, uint64(len(m.ID)))
+		i += copy(dAtA[i:], m.ID)
+	}
+	if len(m.Requires) > 0 {
+		for _, s := range m.Requires {
+			dAtA[i] = 0x1a
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
 			}
-			i -= size
-			i = encodeVarintIntrospection(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x3a
-	}
-	if len(m.Capabilities) > 0 {
-		for iNdEx := len(m.Capabilities) - 1; iNdEx >= 0; iNdEx-- {
-			i -= len(m.Capabilities[iNdEx])
-			copy(dAtA[i:], m.Capabilities[iNdEx])
-			i = encodeVarintIntrospection(dAtA, i, uint64(len(m.Capabilities[iNdEx])))
-			i--
-			dAtA[i] = 0x32
-		}
-	}
-	if len(m.Exports) > 0 {
-		for k := range m.Exports {
-			v := m.Exports[k]
-			baseI := i
-			i -= len(v)
-			copy(dAtA[i:], v)
-			i = encodeVarintIntrospection(dAtA, i, uint64(len(v)))
-			i--
-			dAtA[i] = 0x12
-			i -= len(k)
-			copy(dAtA[i:], k)
-			i = encodeVarintIntrospection(dAtA, i, uint64(len(k)))
-			i--
-			dAtA[i] = 0xa
-			i = encodeVarintIntrospection(dAtA, i, uint64(baseI-i))
-			i--
-			dAtA[i] = 0x2a
+			dAtA[i] = uint8(l)
+			i++
+			i += copy(dAtA[i:], s)
 		}
 	}
 	if len(m.Platforms) > 0 {
-		for iNdEx := len(m.Platforms) - 1; iNdEx >= 0; iNdEx-- {
-			{
-				size, err := m.Platforms[iNdEx].MarshalToSizedBuffer(dAtA[:i])
-				if err != nil {
-					return 0, err
-				}
-				i -= size
-				i = encodeVarintIntrospection(dAtA, i, uint64(size))
-			}
-			i--
+		for _, msg := range m.Platforms {
 			dAtA[i] = 0x22
+			i++
+			i = encodeVarintIntrospection(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
 		}
 	}
-	if len(m.Requires) > 0 {
-		for iNdEx := len(m.Requires) - 1; iNdEx >= 0; iNdEx-- {
-			i -= len(m.Requires[iNdEx])
-			copy(dAtA[i:], m.Requires[iNdEx])
-			i = encodeVarintIntrospection(dAtA, i, uint64(len(m.Requires[iNdEx])))
-			i--
-			dAtA[i] = 0x1a
+	if len(m.Exports) > 0 {
+		for k, _ := range m.Exports {
+			dAtA[i] = 0x2a
+			i++
+			v := m.Exports[k]
+			mapSize := 1 + len(k) + sovIntrospection(uint64(len(k))) + 1 + len(v) + sovIntrospection(uint64(len(v)))
+			i = encodeVarintIntrospection(dAtA, i, uint64(mapSize))
+			dAtA[i] = 0xa
+			i++
+			i = encodeVarintIntrospection(dAtA, i, uint64(len(k)))
+			i += copy(dAtA[i:], k)
+			dAtA[i] = 0x12
+			i++
+			i = encodeVarintIntrospection(dAtA, i, uint64(len(v)))
+			i += copy(dAtA[i:], v)
 		}
 	}
-	if len(m.ID) > 0 {
-		i -= len(m.ID)
-		copy(dAtA[i:], m.ID)
-		i = encodeVarintIntrospection(dAtA, i, uint64(len(m.ID)))
-		i--
-		dAtA[i] = 0x12
+	if len(m.Capabilities) > 0 {
+		for _, s := range m.Capabilities {
+			dAtA[i] = 0x32
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			dAtA[i] = uint8(l)
+			i++
+			i += copy(dAtA[i:], s)
+		}
 	}
-	if len(m.Type) > 0 {
-		i -= len(m.Type)
-		copy(dAtA[i:], m.Type)
-		i = encodeVarintIntrospection(dAtA, i, uint64(len(m.Type)))
-		i--
-		dAtA[i] = 0xa
+	if m.InitErr != nil {
+		dAtA[i] = 0x3a
+		i++
+		i = encodeVarintIntrospection(dAtA, i, uint64(m.InitErr.Size()))
+		n1, err := m.InitErr.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n1
 	}
-	return len(dAtA) - i, nil
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
+	return i, nil
 }
 
 func (m *PluginsRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
@@ -526,35 +510,35 @@ func (m *PluginsRequest) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *PluginsRequest) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *PluginsRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
+	var i int
 	_ = i
 	var l int
 	_ = l
-	if m.XXX_unrecognized != nil {
-		i -= len(m.XXX_unrecognized)
-		copy(dAtA[i:], m.XXX_unrecognized)
-	}
 	if len(m.Filters) > 0 {
-		for iNdEx := len(m.Filters) - 1; iNdEx >= 0; iNdEx-- {
-			i -= len(m.Filters[iNdEx])
-			copy(dAtA[i:], m.Filters[iNdEx])
-			i = encodeVarintIntrospection(dAtA, i, uint64(len(m.Filters[iNdEx])))
-			i--
+		for _, s := range m.Filters {
 			dAtA[i] = 0xa
+			i++
+			l = len(s)
+			for l >= 1<<7 {
+				dAtA[i] = uint8(uint64(l)&0x7f | 0x80)
+				l >>= 7
+				i++
+			}
+			dAtA[i] = uint8(l)
+			i++
+			i += copy(dAtA[i:], s)
 		}
 	}
-	return len(dAtA) - i, nil
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
+	return i, nil
 }
 
 func (m *PluginsResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
@@ -562,40 +546,32 @@ func (m *PluginsResponse) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *PluginsResponse) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *PluginsResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
+	var i int
 	_ = i
 	var l int
 	_ = l
-	if m.XXX_unrecognized != nil {
-		i -= len(m.XXX_unrecognized)
-		copy(dAtA[i:], m.XXX_unrecognized)
-	}
 	if len(m.Plugins) > 0 {
-		for iNdEx := len(m.Plugins) - 1; iNdEx >= 0; iNdEx-- {
-			{
-				size, err := m.Plugins[iNdEx].MarshalToSizedBuffer(dAtA[:i])
-				if err != nil {
-					return 0, err
-				}
-				i -= size
-				i = encodeVarintIntrospection(dAtA, i, uint64(size))
-			}
-			i--
+		for _, msg := range m.Plugins {
 			dAtA[i] = 0xa
+			i++
+			i = encodeVarintIntrospection(dAtA, i, uint64(msg.Size()))
+			n, err := msg.MarshalTo(dAtA[i:])
+			if err != nil {
+				return 0, err
+			}
+			i += n
 		}
 	}
-	return len(dAtA) - i, nil
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
+	return i, nil
 }
 
 func (m *ServerResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	n, err := m.MarshalTo(dAtA)
 	if err != nil {
 		return nil, err
 	}
@@ -603,39 +579,30 @@ func (m *ServerResponse) Marshal() (dAtA []byte, err error) {
 }
 
 func (m *ServerResponse) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *ServerResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
+	var i int
 	_ = i
 	var l int
 	_ = l
-	if m.XXX_unrecognized != nil {
-		i -= len(m.XXX_unrecognized)
-		copy(dAtA[i:], m.XXX_unrecognized)
-	}
 	if len(m.UUID) > 0 {
-		i -= len(m.UUID)
-		copy(dAtA[i:], m.UUID)
-		i = encodeVarintIntrospection(dAtA, i, uint64(len(m.UUID)))
-		i--
 		dAtA[i] = 0xa
+		i++
+		i = encodeVarintIntrospection(dAtA, i, uint64(len(m.UUID)))
+		i += copy(dAtA[i:], m.UUID)
 	}
-	return len(dAtA) - i, nil
+	if m.XXX_unrecognized != nil {
+		i += copy(dAtA[i:], m.XXX_unrecognized)
+	}
+	return i, nil
 }
 
 func encodeVarintIntrospection(dAtA []byte, offset int, v uint64) int {
-	offset -= sovIntrospection(v)
-	base := offset
 	for v >= 1<<7 {
 		dAtA[offset] = uint8(v&0x7f | 0x80)
 		v >>= 7
 		offset++
 	}
 	dAtA[offset] = uint8(v)
-	return base
+	return offset + 1
 }
 func (m *Plugin) Size() (n int) {
 	if m == nil {
@@ -740,7 +707,14 @@ func (m *ServerResponse) Size() (n int) {
 }
 
 func sovIntrospection(x uint64) (n int) {
-	return (math_bits.Len64(x|1) + 6) / 7
+	for {
+		n++
+		x >>= 7
+		if x == 0 {
+			break
+		}
+	}
+	return n
 }
 func sozIntrospection(x uint64) (n int) {
 	return sovIntrospection(uint64((x << 1) ^ uint64((int64(x) >> 63))))
@@ -749,11 +723,6 @@ func (this *Plugin) String() string {
 	if this == nil {
 		return "nil"
 	}
-	repeatedStringForPlatforms := "[]Platform{"
-	for _, f := range this.Platforms {
-		repeatedStringForPlatforms += fmt.Sprintf("%v", f) + ","
-	}
-	repeatedStringForPlatforms += "}"
 	keysForExports := make([]string, 0, len(this.Exports))
 	for k, _ := range this.Exports {
 		keysForExports = append(keysForExports, k)
@@ -768,7 +737,7 @@ func (this *Plugin) String() string {
 		`Type:` + fmt.Sprintf("%v", this.Type) + `,`,
 		`ID:` + fmt.Sprintf("%v", this.ID) + `,`,
 		`Requires:` + fmt.Sprintf("%v", this.Requires) + `,`,
-		`Platforms:` + repeatedStringForPlatforms + `,`,
+		`Platforms:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.Platforms), "Platform", "types.Platform", 1), `&`, ``, 1) + `,`,
 		`Exports:` + mapStringForExports + `,`,
 		`Capabilities:` + fmt.Sprintf("%v", this.Capabilities) + `,`,
 		`InitErr:` + strings.Replace(fmt.Sprintf("%v", this.InitErr), "Status", "rpc.Status", 1) + `,`,
@@ -792,13 +761,8 @@ func (this *PluginsResponse) String() string {
 	if this == nil {
 		return "nil"
 	}
-	repeatedStringForPlugins := "[]Plugin{"
-	for _, f := range this.Plugins {
-		repeatedStringForPlugins += strings.Replace(strings.Replace(f.String(), "Plugin", "Plugin", 1), `&`, ``, 1) + ","
-	}
-	repeatedStringForPlugins += "}"
 	s := strings.Join([]string{`&PluginsResponse{`,
-		`Plugins:` + repeatedStringForPlugins + `,`,
+		`Plugins:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.Plugins), "Plugin", "Plugin", 1), `&`, ``, 1) + `,`,
 		`XXX_unrecognized:` + fmt.Sprintf("%v", this.XXX_unrecognized) + `,`,
 		`}`,
 	}, "")
@@ -1465,7 +1429,6 @@ func (m *ServerResponse) Unmarshal(dAtA []byte) error {
 func skipIntrospection(dAtA []byte) (n int, err error) {
 	l := len(dAtA)
 	iNdEx := 0
-	depth := 0
 	for iNdEx < l {
 		var wire uint64
 		for shift := uint(0); ; shift += 7 {
@@ -1497,8 +1460,10 @@ func skipIntrospection(dAtA []byte) (n int, err error) {
 					break
 				}
 			}
+			return iNdEx, nil
 		case 1:
 			iNdEx += 8
+			return iNdEx, nil
 		case 2:
 			var length int
 			for shift := uint(0); ; shift += 7 {
@@ -1519,30 +1484,55 @@ func skipIntrospection(dAtA []byte) (n int, err error) {
 				return 0, ErrInvalidLengthIntrospection
 			}
 			iNdEx += length
-		case 3:
-			depth++
-		case 4:
-			if depth == 0 {
-				return 0, ErrUnexpectedEndOfGroupIntrospection
+			if iNdEx < 0 {
+				return 0, ErrInvalidLengthIntrospection
 			}
-			depth--
+			return iNdEx, nil
+		case 3:
+			for {
+				var innerWire uint64
+				var start int = iNdEx
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return 0, ErrIntOverflowIntrospection
+					}
+					if iNdEx >= l {
+						return 0, io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					innerWire |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				innerWireType := int(innerWire & 0x7)
+				if innerWireType == 4 {
+					break
+				}
+				next, err := skipIntrospection(dAtA[start:])
+				if err != nil {
+					return 0, err
+				}
+				iNdEx = start + next
+				if iNdEx < 0 {
+					return 0, ErrInvalidLengthIntrospection
+				}
+			}
+			return iNdEx, nil
+		case 4:
+			return iNdEx, nil
 		case 5:
 			iNdEx += 4
+			return iNdEx, nil
 		default:
 			return 0, fmt.Errorf("proto: illegal wireType %d", wireType)
 		}
-		if iNdEx < 0 {
-			return 0, ErrInvalidLengthIntrospection
-		}
-		if depth == 0 {
-			return iNdEx, nil
-		}
 	}
-	return 0, io.ErrUnexpectedEOF
+	panic("unreachable")
 }
 
 var (
-	ErrInvalidLengthIntrospection        = fmt.Errorf("proto: negative length found during unmarshaling")
-	ErrIntOverflowIntrospection          = fmt.Errorf("proto: integer overflow")
-	ErrUnexpectedEndOfGroupIntrospection = fmt.Errorf("proto: unexpected end of group")
+	ErrInvalidLengthIntrospection = fmt.Errorf("proto: negative length found during unmarshaling")
+	ErrIntOverflowIntrospection   = fmt.Errorf("proto: integer overflow")
 )
